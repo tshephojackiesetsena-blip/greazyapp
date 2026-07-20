@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&family=Work+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Char & ember palette — grounded in the brand: live-fire grilling,
+     butcher-paper tickets, night-market street food. */
+  --charcoal:        #16120e;
+  --charcoal-soft:   #1f1a14;
+  --charcoal-raised: #29221a;
+  --smoke-line:      #3a3025;
+
+  --paper:      #fbf3e6;
+  --paper-dim:  #f1e6d3;
+  --paper-line: #e4d5ba;
+
+  --ink:        #241a10;
+  --ink-soft:   #6b5c49;
+  --ink-faint:  #9c8b73;
+
+  --ember:       #ff5a1f;
+  --ember-hot:   #ff8a3d;
+  --ember-deep:  #c62828;
+  --gold:        #f2a93b;
+
+  --success:     #3c8b5b;
+  --success-bg:  #e4f2e9;
+  --danger:      #d64545;
+  --danger-bg:   #fbe9e7;
+  --info-bg:     #fff3cd;
+  --info-ink:    #8a5a12;
+
+  --ember-gradient: linear-gradient(135deg, var(--ember) 0%, var(--ember-deep) 100%);
+  --gold-gradient:  linear-gradient(135deg, var(--gold) 0%, var(--ember) 100%);
+
+  --font-display: 'Anton', 'Arial Narrow', sans-serif;
+  --font-body:    'Work Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:    'Space Mono', 'Courier New', monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 2px 8px rgba(22, 18, 14, 0.08);
+  --shadow-md: 0 10px 30px rgba(22, 18, 14, 0.14);
+  --shadow-lg: 0 24px 60px rgba(22, 18, 14, 0.28);
+  --shadow-ember: 0 10px 26px rgba(255, 90, 31, 0.35);
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; }
+
+::selection { background: var(--ember); color: #fff; }
+
+:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}

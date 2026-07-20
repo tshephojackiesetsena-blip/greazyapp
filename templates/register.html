@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create an account — Greazy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+</head>
+<body>
+    <div class="auth-shell">
+        <div class="auth-visual">
+            <div class="auth-visual-top">
+                <a class="auth-brand" href="/">
+                    <svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M17 2c-1 5-6 6.5-6 12a6 6 0 0 0 12 0c0-2-1-3.2-2-4.2.4 2 -0.3 3.6-1.7 4.4 0.6-2.4-0.4-4-2.3-6C18 6.6 17.6 4.2 17 2Z" fill="url(#g2)"/>
+                        <defs><linearGradient id="g2" x1="11" y1="2" x2="23" y2="26" gradientUnits="userSpaceOnUse"><stop stop-color="#FFA23D"/><stop offset="1" stop-color="#C62828"/></linearGradient></defs>
+                    </svg>
+                    <span>GREAZY<em>.</em></span>
+                </a>
+            </div>
+            <div class="auth-visual-bottom">
+                <h2>Join the grill. First order's a tap away.</h2>
+                <p>Create an account to order kebabs, shawarma and braai plates for delivery, pickup or dine-in.</p>
+                <div class="auth-tickets">
+                    <span class="auth-ticket"><strong>Fast checkout</strong>Details saved</span>
+                    <span class="auth-ticket"><strong>Order history</strong>All in one place</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="auth-panel">
+            <div class="auth-card">
+                <div class="auth-card-header">
+                    <span class="eyebrow">New here</span>
+                    <h1>Create account</h1>
+                    <p>Sign up to start ordering.</p>
+                </div>
+
+                <div class="alert alert-error" id="errorMessage" role="alert"></div>
+                <div class="alert alert-success" id="successMessage" role="status"></div>
+
+                <form onsubmit="handleRegister(event)" novalidate>
+                    <div class="form-group">
+                        <label for="fullName">Full name</label>
+                        <input type="text" id="fullName" name="fullName" placeholder="Your full name" autocomplete="name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email address</label>
+                        <input type="email" id="email" name="email" placeholder="your@email.com" autocomplete="email" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone">Phone number</label>
+                        <input type="tel" id="phone" name="phone" placeholder="+27 12 345 6789" autocomplete="tel" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="new-password"
+                               onfocus="showPasswordRequirements()" onchange="checkPasswordStrength()" required>
+                        <div class="password-requirements" id="passwordReqs">
+                            <div class="requirement" id="req-length">At least 6 characters</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm password</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="••••••••" autocomplete="new-password" required>
+                    </div>
+
+                    <button type="submit" class="btn-auth" id="registerBtn">
+                        <span id="btnText">Create account</span>
+                    </button>
+                </form>
+
+                <div class="auth-footer">
+                    <p>Already have an account? <a href="/login">Sign in</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showPasswordRequirements() {
+            document.getElementById('passwordReqs').classList.add('show');
+        }
+
+        function checkPasswordStrength() {
+            const password = document.getElementById('password').value;
+            const reqLength = document.getElementById('req-length');
+
+            if (password.length >= 6) {
+                reqLength.classList.add('met');
+                reqLength.textContent = '✓ At least 6 characters';
+            } else {
+                reqLength.classList.remove('met');
+                reqLength.textContent = 'At least 6 characters';
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+
+            const fullName = document.getElementById('fullName').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const registerBtn = document.getElementById('registerBtn');
+            const btnText = document.getElementById('btnText');
+            const errorDiv = document.getElementById('errorMessage');
+            const successDiv = document.getElementById('successMessage');
+
+            errorDiv.classList.remove('show');
+            successDiv.classList.remove('show');
+
+            if (password !== confirmPassword) {
+                errorDiv.textContent = 'Passwords do not match.';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (password.length < 6) {
+                errorDiv.textContent = 'Password must be at least 6 characters.';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            registerBtn.disabled = true;
+            btnText.innerHTML = '<span class="spinner"></span> Creating account…';
+
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fullName, email, phone, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    successDiv.textContent = 'Account created — redirecting…';
+                    successDiv.classList.add('show');
+                    setTimeout(() => { window.location.href = '/'; }, 1200);
+                } else {
+                    errorDiv.textContent = data.message || 'Registration failed. Please try again.';
+                    errorDiv.classList.add('show');
+                    registerBtn.disabled = false;
+                    btnText.textContent = 'Create account';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Something went wrong. Please try again.';
+                errorDiv.classList.add('show');
+                console.error('Error:', error);
+                registerBtn.disabled = false;
+                btnText.textContent = 'Create account';
+            }
+        }
+
+        document.getElementById('fullName').focus();
+    </script>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Dashboard — Greazy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/staff.css') }}">
+</head>
+<body>
+    <header class="staff-header">
+        <div class="header-container">
+            <div class="staff-brand">
+                <svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M17 2c-1 5-6 6.5-6 12a6 6 0 0 0 12 0c0-2-1-3.2-2-4.2.4 2 -0.3 3.6-1.7 4.4 0.6-2.4-0.4-4-2.3-6C18 6.6 17.6 4.2 17 2Z" fill="url(#g3)"/>
+                    <defs><linearGradient id="g3" x1="11" y1="2" x2="23" y2="26" gradientUnits="userSpaceOnUse"><stop stop-color="#FFA23D"/><stop offset="1" stop-color="#C62828"/></linearGradient></defs>
+                </svg>
+                <span class="staff-brand-word">GREAZY<span>.</span></span>
+                <span class="staff-tag">Staff</span>
+            </div>
+            <div class="header-right">
+                <span class="live-dot"><span class="pulse"></span> Live — updates every 5s</span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="dashboard-header">
+            <h1>Orders</h1>
+            <p>Manage and track all customer orders in real time.</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total orders</div>
+                <div class="stat-value" id="totalOrders">0</div>
+            </div>
+            <div class="stat-card pending">
+                <div class="stat-label">Pending</div>
+                <div class="stat-value" id="pendingOrders">0</div>
+            </div>
+            <div class="stat-card completed">
+                <div class="stat-label">Completed today</div>
+                <div class="stat-value" id="completedOrders">0</div>
+            </div>
+            <div class="stat-card revenue">
+                <div class="stat-label">Revenue today</div>
+                <div class="stat-value" id="todayRevenue">R0</div>
+            </div>
+        </div>
+
+        <div class="orders-section">
+            <div class="orders-header">
+                <h2>All orders</h2>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="filterOrders('all')">All</button>
+                    <button class="filter-btn" onclick="filterOrders('pending')">Pending</button>
+                    <button class="filter-btn" onclick="filterOrders('preparing')">Preparing</button>
+                    <button class="filter-btn" onclick="filterOrders('ready')">Ready</button>
+                    <button class="filter-btn" onclick="filterOrders('completed')">Completed</button>
+                </div>
+            </div>
+
+            <div class="orders-content">
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
+                    <p>No orders found for this filter.</p>
+                </div>
+                <table id="ordersTable">
+                    <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Customer</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Payment</th>
+                            <th>Status</th>
+                            <th>Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div class="modal" id="orderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalOrderId"></h2>
+                <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="order-details" id="orderDetails"></div>
+                <div class="order-items" id="orderItems"></div>
+                <div class="modal-actions">
+                    <select id="statusSelect" onchange="updateOrderStatus()">
+                        <option value="">Change status…</option>
+                        <option value="pending">Pending</option>
+                        <option value="preparing">Preparing</option>
+                        <option value="ready">Ready</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                    <select id="paymentSelect" onchange="updatePaymentStatus()">
+                        <option value="">Update payment…</option>
+                        <option value="pending">Pending</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allOrders = [];
+        let currentFilter = 'all';
+        let selectedOrderId = null;
+
+        async function init() {
+            await loadOrders();
+            setInterval(loadOrders, 5000);
+        }
+
+        async function loadOrders() {
+            try {
+                const response = await fetch('/api/admin/orders');
+                if (!response.ok) {
+                    window.location.href = '/login';
+                    return;
+                }
+                allOrders = await response.json();
+                renderOrders();
+                updateStats();
+            } catch (error) {
+                console.error('Error loading orders:', error);
+            }
+        }
+
+        function renderOrders() {
+            const tbody = document.getElementById('ordersBody');
+            const emptyState = document.getElementById('emptyState');
+
+            let filteredOrders = allOrders;
+            if (currentFilter !== 'all') {
+                filteredOrders = allOrders.filter(o => o.status === currentFilter);
+            }
+
+            if (filteredOrders.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            tbody.innerHTML = filteredOrders.map(order => `
+                <tr>
+                    <td class="order-id">#${order.id}</td>
+                    <td>
+                        <div class="customer-info">
+                            <span class="customer-name">${order.customerName}</span>
+                            <span class="customer-phone">${order.customerPhone}</span>
+                        </div>
+                    </td>
+                    <td>${order.orderType.charAt(0).toUpperCase() + order.orderType.slice(1)}</td>
+                    <td class="amount">R${order.total}</td>
+                    <td>
+                        <span class="payment-badge ${order.paymentStatus === 'completed' ? 'payment-completed' : 'payment-pending'}">
+                            ${order.paymentMethod} · ${order.paymentStatus}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge status-${order.status}">
+                            ${order.status}
+                        </span>
+                    </td>
+                    <td>${formatTime(order.timestamp)}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="action-btn" onclick="viewOrder('${order.id}')">View</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateStats() {
+            const today = Math.floor(Date.now() / 1000) - (24 * 3600);
+
+            document.getElementById('totalOrders').textContent = allOrders.length;
+            document.getElementById('pendingOrders').textContent = allOrders.filter(o => o.status === 'pending').length;
+            document.getElementById('completedOrders').textContent = allOrders.filter(o => o.status === 'completed' && o.timestamp > today).length;
+
+            const todayRevenue = allOrders
+                .filter(o => o.timestamp > today)
+                .reduce((sum, o) => sum + o.total, 0);
+            document.getElementById('todayRevenue').textContent = `R${todayRevenue}`;
+        }
+
+        function filterOrders(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderOrders();
+        }
+
+        function viewOrder(orderId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+
+            selectedOrderId = orderId;
+            document.getElementById('modalOrderId').textContent = `#${order.id}`;
+
+            const detailsHtml = `
+                <div class="detail-row">
+                    <span class="detail-label">Customer</span>
+                    <span class="detail-value">${order.customerName}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Phone</span>
+                    <span class="detail-value">${order.customerPhone}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Order type</span>
+                    <span class="detail-value">${order.orderType.charAt(0).toUpperCase() + order.orderType.slice(1)}</span>
+                </div>
+                ${order.deliveryAddress ? `
+                <div class="detail-row">
+                    <span class="detail-label">Delivery address</span>
+                    <span class="detail-value">${order.deliveryAddress}</span>
+                </div>
+                ` : ''}
+                <div class="detail-row">
+                    <span class="detail-label">Payment method</span>
+                    <span class="detail-value">${order.paymentMethod}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Payment status</span>
+                    <span class="detail-value">
+                        <span class="payment-badge ${order.paymentStatus === 'completed' ? 'payment-completed' : 'payment-pending'}">
+                            ${order.paymentStatus}
+                        </span>
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Order status</span>
+                    <span class="detail-value">
+                        <span class="status-badge status-${order.status}">
+                            ${order.status}
+                        </span>
+                    </span>
+                </div>
+                ${order.orderNotes ? `
+                <div class="detail-row">
+                    <span class="detail-label">Special notes</span>
+                    <span class="detail-value">${order.orderNotes}</span>
+                </div>
+                ` : ''}
+                <div class="detail-row">
+                    <span class="detail-label">Total amount</span>
+                    <span class="detail-value" style="color: var(--ember); font-size: 17px;">R${order.total}</span>
+                </div>
+            `;
+            document.getElementById('orderDetails').innerHTML = detailsHtml;
+
+            const itemsHtml = order.items.map(item => `
+                <div class="item-row">
+                    <span class="item-name">${item.name}</span>
+                    <span class="item-qty">x${item.quantity}</span>
+                    <span class="item-price">R${item.price * item.quantity}</span>
+                </div>
+            `).join('');
+            document.getElementById('orderItems').innerHTML = itemsHtml;
+
+            document.getElementById('statusSelect').value = order.status;
+            document.getElementById('paymentSelect').value = order.paymentStatus;
+            document.getElementById('orderModal').classList.add('active');
+        }
+
+        async function updateOrderStatus() {
+            const status = document.getElementById('statusSelect').value;
+            if (!status || !selectedOrderId) return;
+
+            try {
+                const response = await fetch(`/api/orders/${selectedOrderId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
+                });
+
+                if (response.ok) {
+                    await loadOrders();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function updatePaymentStatus() {
+            const paymentStatus = document.getElementById('paymentSelect').value;
+            if (!paymentStatus || !selectedOrderId) return;
+
+            try {
+                const response = await fetch(`/api/orders/${selectedOrderId}/payment`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentStatus })
+                });
+
+                if (response.ok) {
+                    await loadOrders();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('orderModal').classList.remove('active');
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function logout() {
+            window.location.href = '/logout';
+        }
+
+        init();
+    </script>
+</body>
+</html>
